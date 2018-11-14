@@ -21,10 +21,14 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 import tkinter as tk
+from tkinter import filedialog
 
 FONT_LARGE  = ("Verdana", 12)
 FONT_SIMPLE = ('Verdana','10','bold')
 
+"""
+    Class for holding configuration parameters.
+"""
 class Conf():
     def __init__(self, filename, rate, iTime, oTime, rTime, number):
         self.filename = filename
@@ -50,7 +54,9 @@ class Conf():
     def setConfigured(self, value):
         self.configured = value
      
-        
+"""
+    Initialize and control window navigation.
+"""
 class MainWindow(tk.Tk):    
     def __init__(self, *args, **kwargs):
         
@@ -79,15 +85,25 @@ class MainWindow(tk.Tk):
         global app
         app.destroy()
         
-
+"""
+    First and main page with configuration parameters.
+"""
 class StartPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        
+        menu = tk.Menu(self)
+        controller.config(menu=menu)
+        file = tk.Menu(menu)
+        file.add_command(label="Open", command=self.doFileOpen)
+        file.add_command(label="Exit", command=lambda:controller.exit())
+        menu.add_cascade(label="File", menu=file)
+        
         label = tk.Label(self, text="Configuration Page", font=FONT_LARGE)
         label.grid(pady=10, padx=10, row=0, columnspan=4)
         
         tk.Label(self, text="Filename:", font=FONT_SIMPLE).grid(row=1)
-        self.Filename = tk.Entry(self, width=30, font=FONT_SIMPLE)
+        self.Filename = tk.Entry(self, width=120, font=FONT_SIMPLE)
         self.Filename.insert(tk.END, "Tabela de Dados - 3 Min.csv")
         self.Filename.focus_force()
         self.Filename.grid(row=1, column=1)
@@ -136,6 +152,13 @@ class StartPage(tk.Frame):
         button4 = tk.Button(self, text="Exit", 
                             command=lambda:controller.exit())
         button4.grid(row=8, column=3, padx=10, pady=10)
+
+    def doFileOpen(self):
+        conf.filename = filedialog.askopenfilename(initialdir = ".",title = "Select file",filetypes = (("csv", "*.csv"), ("txt files","*.txt"),
+                                                                                                       ("all files","*.*")))
+        self.Filename.delete(0,tk.END)
+        self.Filename.insert(0, conf.filename)
+
 
     def doSave(self):   
         conf.setConfigured(False)
@@ -347,24 +370,27 @@ def ReadFile(Directory, Filename):
         return [], []
         
     Name = Directory + Filename
-    
-    with open(Name, 'rt') as f:        
-        for line in f:
-            line = line[:-1]
-            line = line.split(",")
-            line = [float(i) for i in line]
-            line = np.array(line)
-            
-            # Calculates average of the line (time record).
-            averageSeries = np.append(averageSeries, np.mean(line))            
-            TimeSeries = np.append(TimeSeries, line)
-    f.close()
-    
-    # Transform vector into matrix
-    numLines = len(averageSeries)
-    numCol = int(len(TimeSeries) / numLines)
-    TimeSeries = np.reshape(TimeSeries, (numLines, numCol))
 
+    try:
+        with open(Name, 'rt') as f:        
+            for line in f:
+                line = line[:-1]
+                line = line.split(",")
+                line = [float(i) for i in line]
+                line = np.array(line)
+                
+                # Calculates average of the line (time record).
+                averageSeries = np.append(averageSeries, np.mean(line))            
+                TimeSeries = np.append(TimeSeries, line)
+        f.close()        
+    except:
+        print("Error I/O: file " + Name + " cannot be found.")
+    else:
+        # Transform vector into matrix
+        numLines = len(averageSeries)
+        numCol = int(len(TimeSeries) / numLines)
+        TimeSeries = np.reshape(TimeSeries, (numLines, numCol))
+        
     return TimeSeries, averageSeries
 
 # Extracts mean series based on initial time (Itime), occlusion time (Otime)
